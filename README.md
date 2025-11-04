@@ -12,6 +12,7 @@ To use Graftcode Gateway (GG), run the executable with the appropriate command l
 - `--port` : port used for communication (default: 80)
 - `--GMA` : Use Graftcode Module Azalyzer to analyze and dislay Graftcode Vision (graphic representation of your modules)
 - `--httpPort` : port used for hosting Graftcode Vision (default:81)
+- `--mcpBaseClass` : name of class which contains static method to be used by MCP Client 
 
 Available runtimes:
 - `netcore` - GG hosts latest .NET installed on machine, supported .NET Core 3.1 or newer
@@ -29,6 +30,7 @@ Example usage:
 - `./gg --runtime netcore --modules /path/to/your.dll --GV --port 8888 --httpPort 8889`
 - `./gg --runtime python --modules /path/to/directory/with/modules --GV --port 8888 --httpPort=8889`
 - `./gg --runtime java --modules /path/to/your.jar --GV --port 8888 --httpPort=8889`
+- - `./gg --runtime netcore --modules /path/to/your.dll --GV --port 8888 --httpPort 8889 --mcpBaseClass Mynamespace.MyClass`
 
 
 The following environment variable are applicable:
