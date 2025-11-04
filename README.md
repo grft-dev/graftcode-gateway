@@ -2,31 +2,35 @@
 
 ## Usage
 
-To use GraftCodeGateway, run the executable with the appropriate command line options. Below are the available options:
+Type ./gg --help to display help
 
-- `--licenseKey` : License key to activate GrafCode Gateway.
-- `--projectKey` : Project key to activate GrafCode Gateway. (overrides licenseKey)
-- `--projectName`: Project name
-- `--runtime` : Runtime to be hosted by GrafCode Gateway (e.g., `netcore`, `clr`, `jvm`, `python`, `ruby`, `nodejs`, `perl`, `python2`).
-- `--modules` : Comma-separated list of modules to be hosted by GrafCode Gateway.
-- `--config` : Path to configuration file.
-- `--namespaces` : Comma-separated list of namespaces to be hosted by GrafCode Gateway.
-- `--types` : Comma-separated list of types to be hosted by GrafCode Gateway.
-- `--GMA` : Use Graftcode Module Azalyzer
-- `--GV` : Host GrafCode Vision
-- `--GSMU` : Send model GrafCode Service Model Uploader`
+To use Graftcode Gateway (GG), run the executable with the appropriate command line options:
+
+- `--projectName`: Project name (can be custom or taken from Graftcode Portal)
+- `--runtime` : Runtime to be hosted
+- `--modules` : Comma-separated list of modules/libraries to be loaded
+- `--port` : port used for communication (default: 80)
+- `--GMA` : Use Graftcode Module Azalyzer to analyze and dislay Graftcode Vision (graphic representation of your modules)
+- `--httpPort` : port used for hosting Graftcode Vision (default:81)
+
+Available runtimes:
+- `netcore` - GG hosts latest .NET installed on machine, supported .NET Core 3.1 or newer
+- `clr` - GG hosts latest .NET Framework installed on machine, supported .NET Core 4.7.2 or newer
+- `java` - GG hosts Java Runtime installed on machine and pointed by JAVA_HOME environment variable, supported JAVA 1.8 or newer
+- `python` -- GG hosts latest Python installed on machine, supported Python 3.6 or newer 
+- `ruby` -- GG hosts Ruby installed on machine, supported Ruby 3
+- `nodejs` -- GG hosts Node.js installed on machine, supported Node.js 20 or newer
+- `php` -- GG hosts PHP installed on machine, supported PHP 7.4 or newer
+- `perl` -- GG hosts Perl installed on machine
+- `python2` -- GG hosts Python2 installed on machine
 
 Example usage:
 
-./gg --licenseKey=YOUR_LICENSE_KEY --runtime=netcore --modules=module1,module2 --config=path/to/config --namespaces=namespace1,namespace2 --types=type1,type2
+- `./gg --runtime netcore --modules /path/to/your.dll --GV --port 8888 --httpPort 8889`
+- `./gg --runtime python --modules /path/to/directory/with/modules --GV --port 8888 --httpPort=8889`
+- `./gg --runtime java --modules /path/to/your.jar --GV --port 8888 --httpPort=8889`
 
-./gg  --licenseKey "n9B5-Km7g-Pp69-j9FE-e9A5" --runtime netcore --port 8080 --httpPort=8081 --GMA --modules /home/michal/GRAFTCODE/test-modules/netcore/TestClass.dll
 
-./gg  --licenseKey "n9B5-Km7g-Pp69-j9FE-e9A5" --runtime python --port 80
-80 --httpPort=8081 --GMA --modules /home/michal/GRAFTCODE/test-modules/python
+The following environment variable are applicable:
 
-The following environment variable are applicable`:
-
-- `LICENSE_KEY` : Provides the license key for activating GrafCode Gateway. It overrides command line --licenseKey value
-- `PROJECT_KEY`: Provides the project key for activating GrafCode Gateway. It overrides command line --projectKey value. (not used now)
 - `GG_DEBUG`: Enable console logging of all incoming and outgoing byte arrays. To enable logging to console set it to "1"
