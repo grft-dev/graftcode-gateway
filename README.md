@@ -26,11 +26,11 @@ Available runtimes:
 
 Example usage:
 
-./gg --runtime netcore --modules /path/to/your.dll --GV --port 8888 --httpPort 8889
-./gg --runtime python --modules /path/to/directory/with/modules --GV --port 8888 --httpPort=8889 
-./gg --runtime java --modules /path/to/your.jar --GV --port 8888 --httpPort=8889 
+- `./gg --runtime netcore --modules /path/to/your.dll --GV --port 8888 --httpPort 8889`
+- `./gg --runtime python --modules /path/to/directory/with/modules --GV --port 8888 --httpPort=8889`
+- `./gg --runtime java --modules /path/to/your.jar --GV --port 8888 --httpPort=8889`
 
 
-The following environment variable are applicable`:
+The following environment variable are applicable:
 
 - `GG_DEBUG`: Enable console logging of all incoming and outgoing byte arrays. To enable logging to console set it to "1"
