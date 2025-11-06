@@ -10,7 +10,7 @@ To use Graftcode Gateway (GG), run the executable with the appropriate command l
 - `--runtime` : Runtime to be hosted
 - `--modules` : Comma-separated list of modules/libraries to be loaded
 - `--port` : port used for communication (default: 80)
-- `--GMA` : Use Graftcode Module Azalyzer to analyze and dislay Graftcode Vision (graphic representation of your modules)
+- `--GV` : Use Graftcode Module Azalyzer to analyze and dislay Graftcode Vision (graphic representation of your modules)
 - `--httpPort` : port used for hosting Graftcode Vision (default:81)
 - `--mcpBaseClass` : name of class which contains static method to be used by MCP Client 
 
