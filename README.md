@@ -18,7 +18,7 @@ You may pass the main module path as the **first positional argument** instead o
 ### Common options
 
 | Option | Description |
-|--------|-------------|
+|------------|-------------|
 | `--projectKey` | JWT used for portal authentication and project metadata. Log in to Graftcode Portal (https://portal.graftcode.com/) to get your project key. |
 | `--modules` | Comma-separated list of modules (DLLs, JARs, paths, etc.) |
 | `--runtime` | Runtime to host: `auto`, `clr`, `netcore`, `java`, `jvm`, `python`, `python27`, `ruby`, `nodejs`, `php`, `perl` (default: `auto`) |
