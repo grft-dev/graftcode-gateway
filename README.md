@@ -1,38 +1,67 @@
-# GraftcodeGateway
+# Graftcode Gateway (GG)
+
+Native gateway that hosts your modules behind WebSocket, HTTP, optional TCP, and optional HTTP/2 servers. It can run **Graftcode Vision** (web UI) and the **Graftcode Module Analyzer (GMA)** for a graph view of loaded modules.
+
 
 ## Usage
 
-Type ./gg --help to display help
+Run `gg --help` (or `gg.exe --help` on Windows) for the full CLI.
 
-To use Graftcode Gateway (GG), run the executable with the appropriate command line options:
+You may pass the main module path as the **first positional argument** instead of `--modules` (for example: `./gg ./MyApp.dll --port 8888`).
 
-- `--projectName`: Project name (can be custom or taken from Graftcode Portal)
-- `--runtime` : Runtime to be hosted
-- `--modules` : Comma-separated list of modules/libraries to be loaded
-- `--port` : port used for communication (default: 80)
-- `--GV` : Use Graftcode Module Azalyzer to analyze and dislay Graftcode Vision (graphic representation of your modules)
-- `--httpPort` : port used for hosting Graftcode Vision (default:81)
-- `--mcpBaseClass` : name of class which contains static method to be used by MCP Client 
+### Common options
 
-Available runtimes:
-- `netcore` - GG hosts latest .NET installed on machine, supported .NET Core 3.1 or newer
-- `clr` - GG hosts latest .NET Framework installed on machine, supported .NET Core 4.7.2 or newer
-- `java` - GG hosts Java Runtime installed on machine and pointed by JAVA_HOME environment variable, supported JAVA 1.8 or newer
-- `python` -- GG hosts latest Python installed on machine, supported Python 3.6 or newer 
-- `ruby` -- GG hosts Ruby installed on machine, supported Ruby 3
-- `nodejs` -- GG hosts Node.js installed on machine, supported Node.js 20 or newer
-- `php` -- GG hosts PHP installed on machine, supported PHP 7.4 or newer
-- `perl` -- GG hosts Perl installed on machine
-- `python2` -- GG hosts Python2 installed on machine
+| Option | Description |
+|--------|-------------|
+| `--runtime` | Runtime to host: `auto`, `clr`, `netcore`, `java`, `jvm`, `python`, `python27`, `ruby`, `nodejs`, `php`, `perl` (default: `auto`) |
+| `--modules` | Comma-separated list of modules (DLLs, JARs, paths, etc.) |
+| `--endpoint` | Gateway endpoint URL (default: `https://grft.dev`) |
+| `--projectKey` | JWT used for portal authentication and project metadata |
+| `--port` | WebSocket server port (default: **80**) |
+| `--httpPort` | HTTP server port for Graftcode Vision (default: **81**) |
+| `--tcpPort` | TCP server port when `--tcpServer` is set (default: **82**) |
+| `--http2Port` | HTTP/2 server port when `--http2Server` is set (default: **83**) |
+| `--GV` | Host Graftcode Vision (default: **on**) |
+| `--tcpServer` | Enable the TCP server |
+| `--http2Server` | Enable the HTTP/2 server |
+| `--types` | Comma-separated list of types to host |
+| `--runApp` | Run the application entry point |
+| `--mcpBaseClass` | Optional declaring type FQN for MCP `tools/call` resolution |
+| `--noVersioning` | Disable versioning for hosted modules |
+| `--doNotExtractBinaries` | Skip extracting bundled binaries (you supply them) |
 
-Example usage:
+### Runtimes (typical setups)
 
-- `./gg --runtime netcore --modules /path/to/your.dll --GV --port 8888 --httpPort 8889`
-- `./gg --runtime python --modules /path/to/directory/with/modules --GV --port 8888 --httpPort=8889`
-- `./gg --runtime java --modules /path/to/your.jar --GV --port 8888 --httpPort=8889`
-- - `./gg --runtime netcore --modules /path/to/your.dll --GV --port 8888 --httpPort 8889 --mcpBaseClass Mynamespace.MyClass`
+- **`netcore`** — .NET (Core) runtime on the machine; .NET Core 3.1 or newer  
+- **`clr`** — .NET Framework on the machine; 4.7.2 or newer  
+- **`java` / `jvm`** — JVM; `JAVA_HOME` should point at the JDK; Java 8 or newer  
+- **`python`** — Python 3  
+- **`python27`** — Python 2.7  
+- **`ruby`** — Ruby 3  
+- **`nodejs`** — Node.js 20 or newer  
+- **`php`** — PHP 7.4 or newer  
+- **`perl`** — Perl  
+- **`auto`** — Let the gateway choose the runtime  
+
+### Examples
+
+```bash
+./gg /path/to/your.dll --port 8888 --httpPort 8889
+./gg /path/to/package/dir --port 8888 --httpPort=8889
+./gg /path/to/your.jar --port 8888 --httpPort 8889
+./gg /path/to/lib.dll --http2Server --http2Port 8989 --tcpServer --tcpPort 8990
+```
+
+## Environment variables
+
+| Variable | Purpose |
+|----------|---------|
+| `GG_DEBUG` | Set to `1` or `TRUE` to log incoming and outgoing byte traffic to the console |
+| `GSMU_ENDPOINT` | When set, overrides the gateway endpoint from `--endpoint` (default CLI value is `https://grft.dev`) |
+| `GC_PROJECT_KEY` | JWT project key; when set, overrides `--projectKey` |
 
 
-The following environment variable are applicable:
-
-- `GG_DEBUG`: Enable console logging of all incoming and outgoing byte arrays. To enable logging to console set it to "1"
+## Known issues
+- If Graftcode gateway does not respond on default ports, check if the ports are not blocked by firewall or used by other applications. You can also specify custom ports using `--port`, `--httpPort`, `--tcpPort`, and `--http2Port` options.
+Default ports may require elevated permissions on some operating systems. If you encounter permission issues, try using a different ports.
+Default port for Websocet is set to 80 to be easily accesible f.e. on web application without the need to specify port in the URL. If you are hosting a web application on the same machine, make sure to use different ports for the gateway and your application to avoid conflicts.
