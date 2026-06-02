@@ -20,7 +20,7 @@ $ArchPattern = switch ($OsArch) {
 Write-Host "Detected architecture: $OsArch"
 Write-Host "Fetching latest release from $Repo..."
 
-$Release = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases/latest"
+$Release = Invoke-RestMethod "https://api.github.com/repos/graftcode-gateway/releases/latest"
 $Asset = $Release.assets |
     Where-Object {
         $_.name -match '(?i)\.zip$' -and
