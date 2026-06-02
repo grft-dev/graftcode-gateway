@@ -1,14 +1,19 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
-$Repo = 'grft-dev/graftcode-gateway'
-$ExeName = 'gg.exe'
-$OutputPath = Join-Path $PWD $ExeName
+# === Poprawione wykrywanie architektury ===
+try {
+    $OsArch = [System.Runtime.InteropServices.RuntimeInformation,mscorlib]::OSArchitecture.ToString().ToLowerInvariant()
+}
+catch {
+    # Fallback dla bardzo starych PowerShell
+    $OsArch = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x86" }
+}
 
-$OsArch = ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture).ToString().ToLowerInvariant()
 $ArchPattern = switch ($OsArch) {
     'arm64' { 'arm64|aarch64' }
     'x64'   { 'x64|amd64' }
+    'x86'   { 'x86|win32|i386' }
     default { throw "Unsupported architecture: $OsArch" }
 }
 
