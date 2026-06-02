@@ -5,7 +5,7 @@ $Repo = 'grft-dev/graftcode-gateway'
 $ExeName = 'gg.exe'
 $OutputPath = Join-Path $PWD $ExeName
 
-$OsArch = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
+$OsArch = ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture).ToString().ToLowerInvariant()
 $ArchPattern = switch ($OsArch) {
     'arm64' { 'arm64|aarch64' }
     'x64'   { 'x64|amd64' }
