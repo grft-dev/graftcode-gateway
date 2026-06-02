@@ -1,12 +1,15 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
+$Repo = 'grft-dev/graftcode-gateway'
+$ExeName = 'gg.exe'
+$OutputPath = Join-Path $PWD $ExeName
+
 # === Poprawione wykrywanie architektury ===
 try {
     $OsArch = [System.Runtime.InteropServices.RuntimeInformation,mscorlib]::OSArchitecture.ToString().ToLowerInvariant()
 }
 catch {
-    # Fallback dla bardzo starych PowerShell
     $OsArch = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x86" }
 }
 
@@ -20,7 +23,8 @@ $ArchPattern = switch ($OsArch) {
 Write-Host "Detected architecture: $OsArch"
 Write-Host "Fetching latest release from $Repo..."
 
-$Release = Invoke-RestMethod "https://api.github.com/repos/graftcode-gateway/releases/latest"
+$Release = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases/latest"
+
 $Asset = $Release.assets |
     Where-Object {
         $_.name -match '(?i)\.zip$' -and
@@ -36,7 +40,6 @@ if (-not $Asset) {
 }
 
 $ZipPath = Join-Path $env:TEMP $Asset.name
-
 Write-Host "Downloading $($Asset.name)..."
 
 $Job = Start-Job {
@@ -54,24 +57,20 @@ while ($Job.State -eq 'Running') {
 
 Receive-Job $Job | Out-Null
 Remove-Job $Job
-Write-Host "`rDownloaded $($Asset.name)                    "
+Write-Host "`rDownloaded $($Asset.name) "
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-
 $Zip = [IO.Compression.ZipFile]::OpenRead($ZipPath)
 try {
     $Entry = $Zip.Entries |
         Where-Object { $_.Name -ieq $ExeName } |
         Select-Object -First 1
-
     if (-not $Entry) {
         throw "Could not find $ExeName inside $($Asset.name)"
     }
-
     if (Test-Path $OutputPath) {
         Remove-Item $OutputPath -Force
     }
-
     [IO.Compression.ZipFileExtensions]::ExtractToFile($Entry, $OutputPath, $true)
 }
 finally {
