@@ -72,41 +72,114 @@ function Download-FileWithSpinner {
     Write-Host "`rDownloaded $Label " -ForegroundColor Green
 }
 
+$RulesRawBase = "https://raw.githubusercontent.com/grft-dev/graftcode-demos/refs/heads/main/rules"
+$RuleLangs = @('dotnet', 'java', 'kotlin', 'php', 'python', 'ruby', 'typescript-node-nextjs')
+
+function Download-GraftcodeRuleSet {
+    param(
+        [string]$RemoteDir,
+        [string]$LocalDir,
+        [string]$Extension,
+        [switch]$IncludeRouter
+    )
+
+    if (-not (Test-Path $LocalDir)) {
+        New-Item -ItemType Directory -Path $LocalDir -Force | Out-Null
+    }
+
+    $Names = @()
+    if ($IncludeRouter) {
+        $Names += 'router'
+    }
+    $Names += $RuleLangs
+
+    foreach ($Name in $Names) {
+        $FileName = "graftcode-$Name.$Extension"
+        $Url = "$RemoteDir/$FileName"
+        $OutputPath = Join-Path $LocalDir $FileName
+        Download-FileWithSpinner -Url $Url -OutputPath $OutputPath -Label $FileName
+    }
+}
+
 function Install-GraftcodeRules {
     Write-Host ""
     Write-Host "Choose IDE:" -ForegroundColor Yellow
     Write-Host "  1. Cursor"
+    Write-Host "  2. Claude Code"
+    Write-Host "  3. GitHub Copilot"
+    Write-Host "  4. Cline"
+    Write-Host "  5. Windsurf"
+    Write-Host "  6. Continue"
+    Write-Host "  7. Aider"
     Write-Host ""
 
-    $IdeChoice = Read-MenuChoice -Prompt "Enter choice [1]" -AllowedChoices @('1')
+    $IdeChoice = Read-MenuChoice -Prompt "Enter choice [1-7]" -AllowedChoices @('1', '2', '3', '4', '5', '6', '7')
 
     switch ($IdeChoice) {
         '1' {
             $RulesDir = Join-Path $PWD ".cursor\rules"
-
-            if (-not (Test-Path $RulesDir)) {
-                New-Item -ItemType Directory -Path $RulesDir -Force | Out-Null
-            }
-
-            $Rules = @(
-                @{
-                    Url = "https://raw.githubusercontent.com/grft-dev/graftcode-demos/refs/heads/main/rules/Cursor/.cursor/rules/graftcode-dotnet.mdc"
-                    FileName = "graftcode-dotnet.mdc"
-                },
-                @{
-                    Url = "https://raw.githubusercontent.com/grft-dev/graftcode-demos/refs/heads/main/rules/Cursor/.cursor/rules/graftcode-typescript-node-nextjs.mdc"
-                    FileName = "graftcode-typescript-node-nextjs.mdc"
-                }
-            )
-
-            foreach ($Rule in $Rules) {
-                $OutputPath = Join-Path $RulesDir $Rule.FileName
-                Download-FileWithSpinner -Url $Rule.Url -OutputPath $OutputPath -Label $Rule.FileName
-            }
+            Download-GraftcodeRuleSet -RemoteDir "$RulesRawBase/Cursor/.cursor/rules" -LocalDir $RulesDir -Extension "mdc" -IncludeRouter
 
             Write-Host ""
             Write-Host "Installed Graftcode Cursor rules in:" -ForegroundColor Green
             Write-Host $RulesDir
+        }
+        '2' {
+            Download-FileWithSpinner -Url "$RulesRawBase/Claude/CLAUDE.md" -OutputPath (Join-Path $PWD "CLAUDE.md") -Label "CLAUDE.md"
+            $RulesDir = Join-Path $PWD ".claude\rules"
+            Download-GraftcodeRuleSet -RemoteDir "$RulesRawBase/Claude/.claude/rules" -LocalDir $RulesDir -Extension "md"
+
+            Write-Host ""
+            Write-Host "Installed Graftcode Claude Code rules in:" -ForegroundColor Green
+            Write-Host (Join-Path $PWD "CLAUDE.md")
+            Write-Host $RulesDir
+        }
+        '3' {
+            $GithubDir = Join-Path $PWD ".github"
+            if (-not (Test-Path $GithubDir)) {
+                New-Item -ItemType Directory -Path $GithubDir -Force | Out-Null
+            }
+            Download-FileWithSpinner -Url "$RulesRawBase/Copilot/.github/copilot-instructions.md" -OutputPath (Join-Path $GithubDir "copilot-instructions.md") -Label "copilot-instructions.md"
+            $RulesDir = Join-Path $GithubDir "instructions"
+            Download-GraftcodeRuleSet -RemoteDir "$RulesRawBase/Copilot/.github/instructions" -LocalDir $RulesDir -Extension "instructions.md"
+
+            Write-Host ""
+            Write-Host "Installed Graftcode GitHub Copilot rules in:" -ForegroundColor Green
+            Write-Host (Join-Path $GithubDir "copilot-instructions.md")
+            Write-Host $RulesDir
+        }
+        '4' {
+            $RulesDir = Join-Path $PWD ".clinerules"
+            Download-GraftcodeRuleSet -RemoteDir "$RulesRawBase/Cline/.clinerules" -LocalDir $RulesDir -Extension "md" -IncludeRouter
+
+            Write-Host ""
+            Write-Host "Installed Graftcode Cline rules in:" -ForegroundColor Green
+            Write-Host $RulesDir
+        }
+        '5' {
+            $RulesDir = Join-Path $PWD ".windsurf\rules"
+            Download-GraftcodeRuleSet -RemoteDir "$RulesRawBase/Windsurf/.windsurf/rules" -LocalDir $RulesDir -Extension "md" -IncludeRouter
+
+            Write-Host ""
+            Write-Host "Installed Graftcode Windsurf rules in:" -ForegroundColor Green
+            Write-Host $RulesDir
+        }
+        '6' {
+            $RulesDir = Join-Path $PWD ".continue\rules"
+            Download-GraftcodeRuleSet -RemoteDir "$RulesRawBase/Continue/.continue/rules" -LocalDir $RulesDir -Extension "md" -IncludeRouter
+
+            Write-Host ""
+            Write-Host "Installed Graftcode Continue rules in:" -ForegroundColor Green
+            Write-Host $RulesDir
+        }
+        '7' {
+            Download-FileWithSpinner -Url "$RulesRawBase/Aider/CONVENTIONS.md" -OutputPath (Join-Path $PWD "CONVENTIONS.md") -Label "CONVENTIONS.md"
+            Download-FileWithSpinner -Url "$RulesRawBase/Aider/.aider.conf.yml" -OutputPath (Join-Path $PWD ".aider.conf.yml") -Label ".aider.conf.yml"
+
+            Write-Host ""
+            Write-Host "Installed Graftcode Aider rules in:" -ForegroundColor Green
+            Write-Host (Join-Path $PWD "CONVENTIONS.md")
+            Write-Host (Join-Path $PWD ".aider.conf.yml")
         }
     }
 }

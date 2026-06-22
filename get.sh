@@ -5,8 +5,8 @@ REPO="grft-dev/graftcode-gateway"
 EXE_NAME="gg"
 OUTPUT_PATH="$PWD/$EXE_NAME"
 
-RULE_DOTNET_URL="https://raw.githubusercontent.com/grft-dev/graftcode-demos/refs/heads/main/rules/Cursor/.cursor/rules/graftcode-dotnet.mdc"
-RULE_TS_URL="https://raw.githubusercontent.com/grft-dev/graftcode-demos/refs/heads/main/rules/Cursor/.cursor/rules/graftcode-typescript-node-nextjs.mdc"
+RULES_RAW_BASE="https://raw.githubusercontent.com/grft-dev/graftcode-demos/refs/heads/main/rules"
+RULE_LANGS="dotnet java kotlin php python ruby typescript-node-nextjs"
 
 say() {
   if [ -w /dev/tty ]; then
@@ -94,19 +94,21 @@ read_choice_12() {
   done
 }
 
-read_choice_cursor() {
-  while :; do
-    choice="$(read_from_tty "Enter choice [1]: ")"
+read_choice_set() {
+  valid="$1"
+  label="$2"
 
-    case "$choice" in
-      1)
+  while :; do
+    choice="$(read_from_tty "Enter choice [$label]: ")"
+
+    for v in $valid; do
+      if [ "$choice" = "$v" ]; then
         echo "$choice"
         return 0
-        ;;
-      *)
-        say "Invalid choice. Available options: 1"
-        ;;
-    esac
+      fi
+    done
+
+    say "Invalid choice. Available options: $(echo "$valid" | sed 's/ /, /g')"
   done
 }
 
@@ -131,25 +133,94 @@ download_file() {
   say "Downloaded $label"
 }
 
+download_rule_set() {
+  remote_dir="$1"
+  local_dir="$2"
+  ext="$3"
+  include_router="$4"
+
+  mkdir -p "$local_dir"
+
+  set_list="$RULE_LANGS"
+  if [ "$include_router" = "yes" ]; then
+    set_list="router $RULE_LANGS"
+  fi
+
+  for name in $set_list; do
+    fname="graftcode-$name.$ext"
+    download_file "$remote_dir/$fname" "$local_dir/$fname" "$fname"
+  done
+}
+
 install_rules() {
   say ""
   say "Choose IDE:"
   say "  1. Cursor"
+  say "  2. Claude Code"
+  say "  3. GitHub Copilot"
+  say "  4. Cline"
+  say "  5. Windsurf"
+  say "  6. Continue"
+  say "  7. Aider"
   say ""
 
-  ide_choice="$(read_choice_cursor)"
+  ide_choice="$(read_choice_set "1 2 3 4 5 6 7" "1-7")"
 
   case "$ide_choice" in
     1)
-      rules_dir="$PWD/.cursor/rules"
-      mkdir -p "$rules_dir"
-
-      download_file "$RULE_DOTNET_URL" "$rules_dir/graftcode-dotnet.mdc" "graftcode-dotnet.mdc"
-      download_file "$RULE_TS_URL" "$rules_dir/graftcode-typescript-node-nextjs.mdc" "graftcode-typescript-node-nextjs.mdc"
-
+      target_dir="$PWD/.cursor/rules"
+      download_rule_set "$RULES_RAW_BASE/Cursor/.cursor/rules" "$target_dir" "mdc" "yes"
       say ""
       say "Installed Graftcode Cursor rules in:"
-      say "$rules_dir"
+      say "$target_dir"
+      ;;
+    2)
+      download_file "$RULES_RAW_BASE/Claude/CLAUDE.md" "$PWD/CLAUDE.md" "CLAUDE.md"
+      target_dir="$PWD/.claude/rules"
+      download_rule_set "$RULES_RAW_BASE/Claude/.claude/rules" "$target_dir" "md" "no"
+      say ""
+      say "Installed Graftcode Claude Code rules in:"
+      say "$PWD/CLAUDE.md"
+      say "$target_dir"
+      ;;
+    3)
+      mkdir -p "$PWD/.github"
+      download_file "$RULES_RAW_BASE/Copilot/.github/copilot-instructions.md" "$PWD/.github/copilot-instructions.md" "copilot-instructions.md"
+      target_dir="$PWD/.github/instructions"
+      download_rule_set "$RULES_RAW_BASE/Copilot/.github/instructions" "$target_dir" "instructions.md" "no"
+      say ""
+      say "Installed Graftcode GitHub Copilot rules in:"
+      say "$PWD/.github/copilot-instructions.md"
+      say "$target_dir"
+      ;;
+    4)
+      target_dir="$PWD/.clinerules"
+      download_rule_set "$RULES_RAW_BASE/Cline/.clinerules" "$target_dir" "md" "yes"
+      say ""
+      say "Installed Graftcode Cline rules in:"
+      say "$target_dir"
+      ;;
+    5)
+      target_dir="$PWD/.windsurf/rules"
+      download_rule_set "$RULES_RAW_BASE/Windsurf/.windsurf/rules" "$target_dir" "md" "yes"
+      say ""
+      say "Installed Graftcode Windsurf rules in:"
+      say "$target_dir"
+      ;;
+    6)
+      target_dir="$PWD/.continue/rules"
+      download_rule_set "$RULES_RAW_BASE/Continue/.continue/rules" "$target_dir" "md" "yes"
+      say ""
+      say "Installed Graftcode Continue rules in:"
+      say "$target_dir"
+      ;;
+    7)
+      download_file "$RULES_RAW_BASE/Aider/CONVENTIONS.md" "$PWD/CONVENTIONS.md" "CONVENTIONS.md"
+      download_file "$RULES_RAW_BASE/Aider/.aider.conf.yml" "$PWD/.aider.conf.yml" ".aider.conf.yml"
+      say ""
+      say "Installed Graftcode Aider rules in:"
+      say "$PWD/CONVENTIONS.md"
+      say "$PWD/.aider.conf.yml"
       ;;
   esac
 }
