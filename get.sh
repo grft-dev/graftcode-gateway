@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 REPO="grft-dev/graftcode-gateway"
 EXE_NAME="gg"
@@ -9,7 +9,7 @@ RULE_DOTNET_URL="https://raw.githubusercontent.com/grft-dev/graftcode-demos/refs
 RULE_TS_URL="https://raw.githubusercontent.com/grft-dev/graftcode-demos/refs/heads/main/rules/Cursor/.cursor/rules/graftcode-typescript-node-nextjs.mdc"
 
 show_intro() {
-  clear || true
+  clear 2>/dev/null || true
 
   cat <<'EOF'
    _____            __ _                 _
@@ -32,44 +32,63 @@ EOF
   echo
 }
 
-read_choice() {
-  local prompt="$1"
-  shift
-  local allowed=("$@")
-  local choice
-
-  while true; do
-    read -r -p "$prompt" choice
-    choice="$(echo "$choice" | xargs)"
-
-    for allowed_choice in "${allowed[@]}"; do
-      if [[ "$choice" == "$allowed_choice" ]]; then
-        echo "$choice"
-        return 0
-      fi
-    done
-
-    echo "Invalid choice. Available options: ${allowed[*]}"
-  done
-}
-
-need_command() {
-  local cmd="$1"
-
-  if ! command -v "$cmd" >/dev/null 2>&1; then
-    echo "Missing required command: $cmd"
-    exit 1
-  fi
+has_cmd() {
+  command -v "$1" >/dev/null 2>&1
 }
 
 download_file() {
-  local url="$1"
-  local output="$2"
-  local label="$3"
+  url="$1"
+  output="$2"
+  label="$3"
 
   echo "Downloading $label..."
-  curl -fL --progress-bar "$url" -o "$output"
+
+  if has_cmd curl; then
+    curl -fL "$url" -o "$output"
+  elif has_cmd wget; then
+    wget -O "$output" "$url"
+  elif has_cmd busybox; then
+    busybox wget -O "$output" "$url"
+  else
+    echo "Error: curl, wget or busybox wget is required to download files."
+    exit 1
+  fi
+
   echo "Downloaded $label"
+}
+
+read_choice_12() {
+  while :; do
+    printf "Enter choice [1/2]: "
+    read choice
+
+    case "$choice" in
+      1|2)
+        echo "$choice"
+        return
+        ;;
+      *)
+        echo "Invalid choice. Available options: 1, 2"
+        ;;
+    esac
+  done
+}
+
+read_choice_cursor() {
+  while :; do
+    printf "Enter choice [1]: "
+    read choice
+
+    case "$choice" in
+      1)
+        echo "$choice"
+        return
+        ;;
+      *)
+        echo "Invalid choice. Available options: 1"
+        ;;
+    esac
+  done
 }
 
 install_rules() {
@@ -78,12 +97,11 @@ install_rules() {
   echo "  1. Cursor"
   echo
 
-  local ide_choice
-  ide_choice="$(read_choice "Enter choice [1]: " "1")"
+  ide_choice="$(read_choice_cursor)"
 
   case "$ide_choice" in
     1)
-      local rules_dir="$PWD/.cursor/rules"
+      rules_dir="$PWD/.cursor/rules"
       mkdir -p "$rules_dir"
 
       download_file "$RULE_DOTNET_URL" "$rules_dir/graftcode-dotnet.mdc" "graftcode-dotnet.mdc"
@@ -97,8 +115,7 @@ install_rules() {
 }
 
 detect_os_pattern() {
-  local os_name
-  os_name="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  os_name="$(uname -s | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz')"
 
   case "$os_name" in
     linux)
@@ -115,8 +132,7 @@ detect_os_pattern() {
 }
 
 detect_arch_pattern() {
-  local arch_name
-  arch_name="$(uname -m | tr '[:upper:]' '[:lower:]')"
+  arch_name="$(uname -m | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz')"
 
   case "$arch_name" in
     arm64|aarch64)
@@ -136,15 +152,19 @@ detect_arch_pattern() {
 }
 
 extract_gateway() {
-  local archive_path="$1"
-  local extract_dir="$2"
+  archive_path="$1"
+  extract_dir="$2"
 
   mkdir -p "$extract_dir"
 
   case "$archive_path" in
     *.zip)
-      need_command unzip
-      unzip -q "$archive_path" -d "$extract_dir"
+      if has_cmd unzip; then
+        unzip -q "$archive_path" -d "$extract_dir"
+      else
+        echo "Error: unzip is required to extract .zip files."
+        exit 1
+      fi
       ;;
     *.tar.gz|*.tgz)
       tar -xzf "$archive_path" -C "$extract_dir"
@@ -155,14 +175,9 @@ extract_gateway() {
       ;;
   esac
 
-  local found
-  found="$(find "$extract_dir" -type f -name "$EXE_NAME" -perm -u+x -print -quit || true)"
+  found="$(find "$extract_dir" -type f -name "$EXE_NAME" -print | head -n 1 || true)"
 
-  if [[ -z "$found" ]]; then
-    found="$(find "$extract_dir" -type f -name "$EXE_NAME" -print -quit || true)"
-  fi
-
-  if [[ -z "$found" ]]; then
+  if [ -z "$found" ]; then
     echo "Could not find $EXE_NAME inside archive."
     echo "Extracted files:"
     find "$extract_dir" -maxdepth 4 -type f | sed 's/^/ - /'
@@ -175,14 +190,6 @@ extract_gateway() {
 }
 
 install_gateway() {
-  need_command curl
-  need_command grep
-  need_command sed
-  need_command find
-
-  local os_pattern
-  local arch_pattern
-
   os_pattern="$(detect_os_pattern)"
   arch_pattern="$(detect_arch_pattern)"
 
@@ -191,46 +198,40 @@ install_gateway() {
   echo "Detected architecture pattern: $arch_pattern"
   echo "Fetching latest release from $REPO..."
 
-  local release_json
   release_json="$(mktemp)"
+  download_file "https://api.github.com/repos/$REPO/releases/latest" "$release_json" "latest release metadata"
 
-  curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" -o "$release_json"
-
-  local asset_url
   asset_url="$(
-    grep -oE '"browser_download_url": "[^"]+"' "$release_json" |
-      sed -E 's/^"browser_download_url": "([^"]+)"/\1/' |
+    grep '"browser_download_url"' "$release_json" |
+      sed 's/.*"browser_download_url": "\(.*\)".*/\1/' |
       grep -Ei '\.(zip|tar\.gz|tgz)$' |
-      grep -Ei "($os_pattern)" |
-      grep -Ei "($arch_pattern)" |
+      grep -Ei "$os_pattern" |
+      grep -Ei "$arch_pattern" |
       grep -Eiv '(sha256|checksum|checksums|signature|sig)' |
-      head -n 1
+      head -n 1 || true
   )"
 
-  if [[ -z "$asset_url" ]]; then
+  if [ -z "$asset_url" ]; then
     echo "Could not find Gateway build for this machine."
     echo
     echo "Available downloadable assets:"
-    grep -oE '"browser_download_url": "[^"]+"' "$release_json" |
-      sed -E 's/^"browser_download_url": "([^"]+)"/ - \1/'
+    grep '"browser_download_url"' "$release_json" |
+      sed 's/.*"browser_download_url": "\(.*\)".*/ - \1/'
     rm -f "$release_json"
     exit 1
   fi
 
-  local asset_name
   asset_name="$(basename "$asset_url")"
 
-  local archive_path
-  local extract_dir
-  archive_path="$(mktemp -t "$asset_name.XXXXXX")"
-  extract_dir="$(mktemp -d)"
+  tmp_dir="$(mktemp -d)"
+  archive_path="$tmp_dir/$asset_name"
+  extract_dir="$tmp_dir/extract"
 
   download_file "$asset_url" "$archive_path" "$asset_name"
-
   extract_gateway "$archive_path" "$extract_dir"
 
-  rm -f "$archive_path" "$release_json"
-  rm -rf "$extract_dir"
+  rm -rf "$tmp_dir"
+  rm -f "$release_json"
 
   echo
   echo "Installed Graftcode Gateway:"
@@ -244,7 +245,7 @@ echo "  1. Graftcode Rules file"
 echo "  2. Graftcode Gateway"
 echo
 
-choice="$(read_choice "Enter choice [1/2]: " "1" "2")"
+choice="$(read_choice_12)"
 
 case "$choice" in
   1) install_rules ;;
