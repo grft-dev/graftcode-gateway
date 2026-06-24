@@ -235,6 +235,9 @@ detect_os_pattern() {
     darwin)
       echo "darwin|macos|osx"
       ;;
+    mingw*|msys*|cygwin*|windows*|win*)
+      echo "windows|win"
+      ;;
     *)
       say "Unsupported OS: $os_name"
       exit 1
@@ -272,8 +275,10 @@ extract_gateway() {
     *.zip)
       if has_cmd unzip; then
         unzip -q "$archive_path" -d "$extract_dir"
+      elif has_cmd tar; then
+        tar -xf "$archive_path" -C "$extract_dir"
       else
-        say "Error: unzip is required to extract .zip files."
+        say "Error: unzip or tar is required to extract .zip files."
         exit 1
       fi
       ;;
@@ -313,6 +318,13 @@ install_gateway() {
 
   os_pattern="$(detect_os_pattern)"
   arch_pattern="$(detect_arch_pattern)"
+
+  case "$os_pattern" in
+    *windows*)
+      EXE_NAME="gg.exe"
+      OUTPUT_PATH="$PWD/$EXE_NAME"
+      ;;
+  esac
 
   say ""
   say "Detected OS pattern: $os_pattern"
