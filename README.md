@@ -24,32 +24,37 @@ Option names are case-insensitive (for example `--httpport` and `--httpPort` are
 | `--runtime` | `auto` | Runtime to host: `auto`, `clr`, `netcore`, `java`, `jvm`, `python`, `python27`, `ruby`, `nodejs`, `php` |
 | `--modules` | *(empty)* | Comma-separated list of modules to host (DLLs, JARs, package paths, etc.) |
 | `--config` | *(empty)* | Path to a JSON config file or inline JSON string (see [Plugin server config](#plugin-server-config)) |
-| `--projectKey` | *(empty)* | JWT for portal authentication and project metadata. Get your key from [Graftcode Portal](https://portal.graftcode.com/). |
+| `--projectKey` | *(empty)* | Project key for portal authentication and project metadata. Use `env:jwt` form (for example `dev:eyJ...`) or a bare JWT. Get your key from [Graftcode Portal](https://portal.graftcode.com/). |
+| `--gatewayName` | *(empty)* | Stable gateway name sent to GSMU. When set, GSMU finds or creates that gateway and later runs reuse it. When omitted, GSMU assigns a new random name each run (for example `false-candlewood`). GG and Vision always show the name returned by GSMU. |
 | `--endpoint` | `https://grft.dev` | Graftcode API endpoint URL used for GSMU upload and related services |
 | `--port` | `80` | WebSocket server port |
 | `--httpPort` | `81` | HTTP server port for Graftcode Vision (used when `--GV` is enabled) |
 | `--tcpPort` | `82` | TCP server port when `--tcpServer` is enabled |
 | `--http2Port` | `83` | HTTP/2 server port when `--http2Server` is enabled |
-| `--GV` | `true` | Host Graftcode Vision. When enabled, also turns on `--GMA` and `--GSMU` |
-| `--GMA` | `false` | Run the Graftcode Module Analyzer to build the Unified Graft Model |
+| `--GV` | `true` | Host Graftcode Vision. When enabled, also turns on `--GSMU` |
+| `--GMA` | `true` | Run the Graftcode Module Analyzer to build the Unified Graft Model. Pass `--GMA false` to disable |
 | `--GSMU` | `false` | Upload the Unified Graft Model to GSMU |
 | `--types` | *(empty)* | Comma-separated list of types to expose from hosted modules |
+| `--methods` | *(empty)* | Comma-separated list of methods to expose from hosted modules |
 | `--tcpServer` | `false` | Enable the TCP server |
 | `--http2Server` | `false` | Enable the HTTP/2 server |
 | `--runApp` | `false` | Run the hosted application entry point |
-| `--mcpBaseClass` | *(empty)* | Optional declaring type FQN from the UGM (language-specific, e.g. `MyAsm.MyNs.MyClass`, `com.app.Util`, `package.module`) used when MCP `tools/call` uses a bare method name, `params.class` is empty, and the name is not in the MCP registry |
+| `--initMethod` | *(empty)* | Static method to invoke after modules are loaded. Use `Class.Method` (C#, Java, Python, Node.js) or `Class::method` (Ruby, PHP) |
+| `--initMethodArgs` | *(empty)* | Optional comma-separated arguments for `--initMethod`. Values are passed as strings, numbers, or `true`/`false` |
+| `--mcpBaseClass` | *(empty)* | Optional declaring type FQN from the UGM (for example `MyAsm.MyNs.MyClass`, `com.app.Util`, `package.module`, `MyModule::MyClass`, or `My\Php\Class`) used when MCP `tools/call` uses a bare method name, `params.class` is empty, and the name is not in the MCP registry. Dotted names are normalized for Ruby and PHP. |
 | `--noVersioning` | `false` | Disable versioning for hosted modules |
 | `--keepVersioning` | `true` | Enable versioning for hosted modules |
 | `--useContext` | `false` | **[DEPRECATED]** Previously enabled Graftcode Context manually. Context is now auto-detected at startup when the hosted module provides it |
 | `--corsAllowedOrigins` | *(empty)* | Comma-separated CORS origin allowlist (for example `http://localhost:3000,https://app.example.com` or `*`) |
 | `--corsConfig` | *(empty)* | Path to a CORS config file (`key=value` format) |
 | `--doNotExtractBinaries` | `false` | Do not extract bundled binaries; you must provide them yourself |
+| `--graftOnly` | `false` | Analyze the modules and print the generated IDL/discovery payload without starting any servers |
 
 ### Versioning
 
 Versioning behavior is resolved after CLI and environment-variable parsing:
 
-- Without a `--projectKey` (or `GC_PROJECT_KEY`), the gateway runs in standalone mode and **disables versioning** by default.
+- Without a `--projectKey` (or `GC_PROJECT_KEY`) **and** without GSMU, the gateway runs in standalone mode and **disables versioning** by default. Standalone is not used whenever GSMU is called (`--GSMU` or `--GV`, which enables GSMU).
 - `--keepVersioning` (default `true`) re-enables versioning even without a project key.
 - `--noVersioning` explicitly disables versioning regardless of project key.
 
@@ -75,8 +80,15 @@ The WebSocket server always starts. The HTTP server (Graftcode Vision) starts on
 ./gg /path/to/your.jar --port 8888 --httpPort 8889
 ./gg /path/to/lib.dll --http2Server --http2Port 8989 --tcpServer --tcpPort 8990
 ./gg /path/to/lib.dll --httpPort 8888 --corsConfig ./cors.config
-./gg /path/to/lib.dll --GMA --noVersioning
+./gg /path/to/lib.dll --types MyClass.MyClass --methods Add,Subtract
+./gg --runtime netcore --types MyNamespace.MyClass --http2Server
+./gg /path/to/lib.dll --projectKey env:eyJ... --gatewayName my-gateway
+./gg /path/to/lib.dll --projectKey env:eyJ...
 ```
+
+When no module path is provided, GG uses `AnalyzeLocalRuntime` (via GMA, enabled
+by default) to analyze types already loaded in the process. In this mode, set
+`--runtime` explicitly and pass `--types` (and optionally `--methods`).
 
 ### CORS config file (`--corsConfig`)
 
@@ -115,7 +127,7 @@ Environment variables are read after CLI parsing and override matching CLI value
 |----------|---------|
 | `GG_DEBUG` | Set to `1` or `TRUE` to log incoming and outgoing byte traffic to the console |
 | `GSMU_ENDPOINT` | When set, overrides the gateway endpoint from `--endpoint` (default CLI value is `https://grft.dev`) |
-| `GC_PROJECT_KEY` | JWT project key; when set, overrides `--projectKey` |
+| `GC_PROJECT_KEY` | Project key in `env:token` form (for example `dev:eyJ...`) or as a bare JWT; when set, overrides `--projectKey` |
 
 
 ## Plugin server config
