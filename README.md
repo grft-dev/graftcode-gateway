@@ -2,6 +2,21 @@
 
 Native gateway that hosts your modules behind WebSocket, HTTP, optional TCP, and optional HTTP/2 servers. It can run **Graftcode Vision** (web UI) and the **Graftcode Module Analyzer (GMA)** for a graph view of loaded modules.
 
+Installers and archives are published on [GitHub Releases](https://github.com/grft-dev/graftcode-gateway/releases).
+
+## Installation
+
+### Windows
+
+```powershell
+iwr https://grft.dev/get | iex
+```
+
+### Linux / macOS
+
+```bash
+curl -fsSL https://grft.dev/get | sh
+```
 
 ## Usage
 
@@ -48,7 +63,7 @@ Option names are case-insensitive (for example `--httpport` and `--httpPort` are
 | `--corsAllowedOrigins` | *(empty)* | Comma-separated CORS origin allowlist (for example `http://localhost:3000,https://app.example.com` or `*`) |
 | `--corsConfig` | *(empty)* | Path to a CORS config file (`key=value` format) |
 | `--doNotExtractBinaries` | `false` | Do not extract bundled binaries; you must provide them yourself |
-| `--graftOnly` | `false` | Analyze the modules and print the generated IDL/discovery payload without starting any servers |
+| `--graftOnly` | `false` | Generate and publish the Unified Graft Model without starting any servers |
 
 ### Versioning
 
@@ -90,6 +105,56 @@ When no module path is provided, GG uses `AnalyzeLocalRuntime` (via GMA, enabled
 by default) to analyze types already loaded in the process. In this mode, set
 `--runtime` explicitly and pass `--types` (and optionally `--methods`).
 
+### MCP (Model Context Protocol)
+
+GG exposes hosted module methods as MCP tools via Streamable HTTP at `POST /mcp`.
+
+| Server | Default port | MCP endpoint |
+|--------|--------------|--------------|
+| HTTP (Drogon) | `--httpPort` (81) | `http://localhost:81/mcp` |
+| WebSocket (uWebSockets) | `--port` (80) | `http://localhost:80/mcp` |
+| HTTP/2 (optional) | `--http2Port` (83) | `http://localhost:83/mcp` |
+
+Example MCP client config (Streamable HTTP):
+
+```json
+{
+  "mcpServers": {
+    "graftcode-gateway": {
+      "url": "http://localhost:81/mcp"
+    }
+  }
+}
+```
+
+Clients that only support stdio MCP servers can bridge over HTTP with `mcp-remote`:
+
+```json
+{
+  "mcpServers": {
+    "graftcode-gateway": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:81/mcp"]
+    }
+  }
+}
+```
+
+`POST /mcp` handles JSON-RPC (`initialize`, `tools/list`, `tools/call`). `GET /mcp` returns 405. `DELETE /mcp` with `Mcp-Session-Id` ends the session.
+
+**Single-port HTTP/2 mode:** When your deployment can expose only one port, enable the HTTP/2 server and use it for both the binary graft protocol and MCP:
+
+- `POST /h2` — binary byte-array protocol (HTTP/2 clients)
+- `POST /mcp` — MCP Streamable HTTP (HTTP/1.1 or HTTP/2)
+
+```bash
+./gg ./MyApp.dll --http2Server --http2Port 8989
+```
+
+Point MCP clients at `http://localhost:8989/mcp`. Standard MCP clients use HTTP/1.1, which the gateway accepts on the same port alongside HTTP/2 for graft traffic.
+
+The HTTP/2 port also exposes the same informational GET routes as the WebSocket port (`/status`, `/gatewayname`, `/http2port`, `/mcpport`, `/ugm`, `/libraries`, `/discover`, `/idl`, `/mcpmodel`, package install commands, etc.).
+
 ### CORS config file (`--corsConfig`)
 
 Pass a file path with `--corsConfig` to control CORS from configuration instead of code.
@@ -128,6 +193,7 @@ Environment variables are read after CLI parsing and override matching CLI value
 | `GG_DEBUG` | Set to `1` or `TRUE` to log incoming and outgoing byte traffic to the console |
 | `GSMU_ENDPOINT` | When set, overrides the gateway endpoint from `--endpoint` (default CLI value is `https://grft.dev`) |
 | `GC_PROJECT_KEY` | Project key in `env:token` form (for example `dev:eyJ...`) or as a bare JWT; when set, overrides `--projectKey` |
+| `UWS_HTTP_MAX_HEADERS_SIZE` | Max HTTP request header size in bytes for the WebSocket/HTTP listener. Default is `16384` |
 
 
 ## Plugin server config
@@ -185,3 +251,5 @@ The same `--config` value is also forwarded to the runtime transmitter configura
 - If you are hosting Python runtime and your modules have dependencies that are not installed in the Python environment, GG may fail to load them. Make sure to install all required dependencies in the Python environment before hosting the modules.
 
 - If you are hosting Ruby runtime and your modules have dependencies that are not installed in the Ruby environment, GG may fail to load them. Make sure to install all required dependencies in the Ruby environment before hosting the modules.
+
+- If you are hosting Node.js or PHP runtimes and your modules have dependencies that are not installed in that environment, GG may fail to load them. Install the required packages before hosting the modules.
