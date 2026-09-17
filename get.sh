@@ -133,6 +133,65 @@ download_file() {
   say "Downloaded $label"
 }
 
+try_download_file() {
+  url="$1"
+  output="$2"
+  label="$3"
+
+  if has_cmd curl; then
+    if curl -fsSL "$url" -o "$output" 2>/dev/null; then
+      say "Downloaded $label"
+      return 0
+    fi
+  elif has_cmd wget; then
+    if wget -q -O "$output" "$url" 2>/dev/null; then
+      say "Downloaded $label"
+      return 0
+    fi
+  elif has_cmd busybox; then
+    if busybox wget -q -O "$output" "$url" 2>/dev/null; then
+      say "Downloaded $label"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+build_direct_download_url() {
+  asset_name="$1"
+  echo "https://github.com/${REPO}/releases/latest/download/${asset_name}"
+}
+
+download_github_release_json() {
+  output="$1"
+  api_url="https://api.github.com/repos/$REPO/releases/latest"
+
+  say "Fetching latest release metadata from GitHub API..."
+
+  if has_cmd curl; then
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+      curl -fsSL \
+        -H "Authorization: Bearer $GITHUB_TOKEN" \
+        -H "Accept: application/vnd.github+json" \
+        "$api_url" -o "$output"
+    else
+      curl -fsSL "$api_url" -o "$output"
+    fi
+  elif has_cmd wget; then
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+      wget -O "$output" --header="Authorization: Bearer $GITHUB_TOKEN" --header="Accept: application/vnd.github+json" "$api_url"
+    else
+      wget -O "$output" "$api_url"
+    fi
+  else
+    say "Error: curl or wget is required to query GitHub releases."
+    exit 1
+  fi
+
+  say "Downloaded latest release metadata"
+}
+
 download_rule_set() {
   remote_dir="$1"
   local_dir="$2"
@@ -265,6 +324,64 @@ detect_arch_pattern() {
   esac
 }
 
+detect_os_name() {
+  os_name="$(uname -s | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz')"
+
+  case "$os_name" in
+    linux)
+      echo "linux"
+      ;;
+    darwin)
+      echo "macos"
+      ;;
+    mingw*|msys*|cygwin*|windows*|win*)
+      echo "windows"
+      ;;
+    *)
+      say "Unsupported OS: $os_name"
+      exit 1
+      ;;
+  esac
+}
+
+detect_arch_suffix() {
+  os_name="$1"
+  arch_name="$(uname -m | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz')"
+
+  case "$arch_name" in
+    arm64|aarch64)
+      echo "arm64"
+      ;;
+    x86_64|amd64)
+      case "$os_name" in
+        macos) echo "x86_64" ;;
+        *) echo "amd64" ;;
+      esac
+      ;;
+    i386|i686|x86)
+      echo "x86"
+      ;;
+    *)
+      say "Unsupported architecture: $arch_name"
+      exit 1
+      ;;
+  esac
+}
+
+build_gateway_asset_name() {
+  os_name="$1"
+  arch_suffix="$2"
+
+  case "$os_name" in
+    windows)
+      echo "gg_${os_name}_${arch_suffix}.zip"
+      ;;
+    *)
+      echo "gg_${os_name}_${arch_suffix}.tar.gz"
+      ;;
+  esac
+}
+
 extract_gateway() {
   archive_path="$1"
   extract_dir="$2"
@@ -318,6 +435,8 @@ install_gateway() {
 
   os_pattern="$(detect_os_pattern)"
   arch_pattern="$(detect_arch_pattern)"
+  os_name="$(detect_os_name)"
+  arch_suffix="$(detect_arch_suffix "$os_name")"
 
   case "$os_pattern" in
     *windows*)
@@ -331,8 +450,25 @@ install_gateway() {
   say "Detected architecture pattern: $arch_pattern"
   say "Fetching latest release from $REPO..."
 
+  asset_name="$(build_gateway_asset_name "$os_name" "$arch_suffix")"
+  direct_url="$(build_direct_download_url "$asset_name")"
+
+  tmp_dir="$(mktemp -d)"
+  archive_path="$tmp_dir/$asset_name"
+  extract_dir="$tmp_dir/extract"
+
+  if try_download_file "$direct_url" "$archive_path" "$asset_name"; then
+    extract_gateway "$archive_path" "$extract_dir"
+    rm -rf "$tmp_dir"
+
+    say ""
+    say "Installed Graftcode Gateway:"
+    say "$OUTPUT_PATH"
+    return 0
+  fi
+
   release_json="$(mktemp)"
-  download_file "https://api.github.com/repos/$REPO/releases/latest" "$release_json" "latest release metadata"
+  download_github_release_json "$release_json"
 
   asset_url="$(
     grep '"browser_download_url"' "$release_json" |
@@ -351,14 +487,12 @@ install_gateway() {
     grep '"browser_download_url"' "$release_json" |
       sed 's/.*"browser_download_url": "\(.*\)".*/ - \1/' > /dev/tty 2>/dev/null || true
     rm -f "$release_json"
+    rm -rf "$tmp_dir"
     exit 1
   fi
 
   asset_name="$(basename "$asset_url")"
-
-  tmp_dir="$(mktemp -d)"
   archive_path="$tmp_dir/$asset_name"
-  extract_dir="$tmp_dir/extract"
 
   download_file "$asset_url" "$archive_path" "$asset_name"
   extract_gateway "$archive_path" "$extract_dir"

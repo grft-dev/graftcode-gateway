@@ -184,6 +184,76 @@ function Install-GraftcodeRules {
     }
 }
 
+function Get-GatewayWindowsAssetName {
+    param(
+        [string]$OsArch
+    )
+
+    $ArchSuffix = switch ($OsArch) {
+        'arm64' { 'arm64' }
+        'x64'   { 'amd64' }
+        'x86'   { 'x86' }
+        default { throw "Unsupported architecture: $OsArch" }
+    }
+
+    return "gg_windows_$ArchSuffix.zip"
+}
+
+function Get-GithubRelease {
+    param(
+        [string]$Repo
+    )
+
+    $Headers = @{
+        Accept = 'application/vnd.github+json'
+    }
+
+    if ($env:GITHUB_TOKEN) {
+        $Headers.Authorization = "Bearer $($env:GITHUB_TOKEN)"
+    }
+
+    return Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers $Headers
+}
+
+function Install-GraftcodeGatewayFromZip {
+    param(
+        [string]$ZipUrl,
+        [string]$ZipName,
+        [string]$ExeName,
+        [string]$OutputPath
+    )
+
+    $ZipPath = Join-Path $env:TEMP $ZipName
+    Download-FileWithSpinner -Url $ZipUrl -OutputPath $ZipPath -Label $ZipName
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+    $Zip = [IO.Compression.ZipFile]::OpenRead($ZipPath)
+
+    try {
+        $Entry = $Zip.Entries |
+            Where-Object { $_.Name -ieq $ExeName } |
+            Select-Object -First 1
+
+        if (-not $Entry) {
+            throw "Could not find $ExeName inside $ZipName"
+        }
+
+        if (Test-Path $OutputPath) {
+            Remove-Item $OutputPath -Force
+        }
+
+        [IO.Compression.ZipFileExtensions]::ExtractToFile($Entry, $OutputPath, $true)
+    }
+    finally {
+        $Zip.Dispose()
+
+        if (Test-Path $ZipPath) {
+            Remove-Item $ZipPath -Force
+        }
+    }
+}
+
 function Install-GraftcodeGateway {
     $Repo = 'grft-dev/graftcode-gateway'
     $ExeName = 'gg.exe'
@@ -208,54 +278,36 @@ function Install-GraftcodeGateway {
         default { throw "Unsupported architecture: $OsArch" }
     }
 
+    $AssetName = Get-GatewayWindowsAssetName -OsArch $OsArch
+    $DirectUrl = "https://github.com/$Repo/releases/latest/download/$AssetName"
+
     Write-Host ""
     Write-Host "Detected architecture: $OsArch"
     Write-Host "Fetching latest release from $Repo..."
 
-    $Release = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases/latest"
-
-    $Asset = $Release.assets |
-        Where-Object {
-            $_.name -match '(?i)\.zip$' -and
-            $_.name -match '(?i)(win|windows)' -and
-            $_.name -match "(?i)($ArchPattern)" -and
-            $_.name -notmatch '(?i)sha256|checksum|checksums|signature|sig'
-        } |
-        Select-Object -First 1
-
-    if (-not $Asset) {
-        $Available = ($Release.assets | ForEach-Object { $_.name }) -join "`n - "
-        throw "Could not find Windows ZIP for architecture '$OsArch'. Available assets:`n - $Available"
-    }
-
-    $ZipPath = Join-Path $env:TEMP $Asset.name
-    Download-FileWithSpinner -Url $Asset.browser_download_url -OutputPath $ZipPath -Label $Asset.name
-
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-
-    $Zip = [IO.Compression.ZipFile]::OpenRead($ZipPath)
-
     try {
-        $Entry = $Zip.Entries |
-            Where-Object { $_.Name -ieq $ExeName } |
+        Install-GraftcodeGatewayFromZip -ZipUrl $DirectUrl -ZipName $AssetName -ExeName $ExeName -OutputPath $OutputPath
+    }
+    catch {
+        Write-Host "Direct download failed, falling back to GitHub API..." -ForegroundColor Yellow
+
+        $Release = Get-GithubRelease -Repo $Repo
+
+        $Asset = $Release.assets |
+            Where-Object {
+                $_.name -match '(?i)\.zip$' -and
+                $_.name -match '(?i)(win|windows)' -and
+                $_.name -match "(?i)($ArchPattern)" -and
+                $_.name -notmatch '(?i)sha256|checksum|checksums|signature|sig'
+            } |
             Select-Object -First 1
 
-        if (-not $Entry) {
-            throw "Could not find $ExeName inside $($Asset.name)"
+        if (-not $Asset) {
+            $Available = ($Release.assets | ForEach-Object { $_.name }) -join "`n - "
+            throw "Could not find Windows ZIP for architecture '$OsArch'. Available assets:`n - $Available"
         }
 
-        if (Test-Path $OutputPath) {
-            Remove-Item $OutputPath -Force
-        }
-
-        [IO.Compression.ZipFileExtensions]::ExtractToFile($Entry, $OutputPath, $true)
-    }
-    finally {
-        $Zip.Dispose()
-
-        if (Test-Path $ZipPath) {
-            Remove-Item $ZipPath -Force
-        }
+        Install-GraftcodeGatewayFromZip -ZipUrl $Asset.browser_download_url -ZipName $Asset.name -ExeName $ExeName -OutputPath $OutputPath
     }
 
     Write-Host ""
