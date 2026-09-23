@@ -18,14 +18,6 @@ iwr https://grft.dev/get | iex
 curl -fsSL https://grft.dev/get | sh
 ```
 
-Debian/Ubuntu Docker images can install the `.deb` without GitHub API rate limits:
-
-```bash
-curl -fsSL https://grft.dev/get/gg | sh && dpkg -i gg.deb
-```
-
-The installer tries direct release downloads first and only falls back to the GitHub REST API when needed. Set `GITHUB_TOKEN` to raise API limits for fallback downloads.
-
 ## Usage
 
 All Graftcode Gateway CLI options are optional.
