@@ -202,7 +202,7 @@ You can run an external server plugin by passing a config file path or inline JS
 
 ```bash
 ./gg --config /path/to/plugin-config.json
-./gg /path/to/lib.dll --config '{"name":"RabbitmqPlugin","queue":"gg","replyQueue":"gg.reply"}'
+./gg /path/to/lib.dll --config '{"name":"RabbitmqPlugin","queue":"gg"}'
 ```
 
 Example config:
@@ -211,7 +211,6 @@ Example config:
 {
   "name": "RabbitmqPlugin",
   "queue": "gg",
-  "replyQueue": "gg.reply",
   "user": "guest",
   "password": "guest",
   "vhost": "/",
