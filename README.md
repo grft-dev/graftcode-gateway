@@ -46,9 +46,9 @@ Option names are case-insensitive (for example `--httpport` and `--httpPort` are
 | `--httpPort` | `81` | HTTP server port for Graftcode Vision (used when `--GV` is enabled) |
 | `--tcpPort` | `82` | TCP server port when `--tcpServer` is enabled |
 | `--http2Port` | `83` | HTTP/2 server port when `--http2Server` is enabled |
-| `--GV` | `true` | Host Graftcode Vision. When enabled, also turns on `--GSMU` |
-| `--GMA` | `true` | Run the Graftcode Module Analyzer to build the Unified Graft Model. Pass `--GMA false` to disable |
-| `--GSMU` | `false` | Upload the Unified Graft Model to GSMU |
+| `--GV` | `true` | Host Graftcode Vision and the informational HTTP routes (`/ugm`, `/idl`, `/discover`, package commands, and the rest). Pass `--GV=0` to hide Vision and those routes. `/`, `/status`, and `/GV` still return `200` with body `OK`. WebSocket `/ws`, TCP, HTTP/2 `POST /h2`, `/mcp`, and `/run` stay available. Stays on when GMA or GSMU is off |
+| `--GMA` | `true` | Run the Graftcode Module Analyzer to build the Unified Graft Model. Pass `--GMA=0` to skip analysis. Turning GMA off also turns GSMU off. Model routes then return `200` with `GMA is disabled. Not enough data to display the model.` |
+| `--GSMU` | `true` | Upload the Unified Graft Model to GSMU and supply installation-command data. Pass `--GSMU=0` to skip the upload. Forced off when GMA is off. Installation-command routes then return `200` with `GSMU is disabled. Not enough data to build the installation command.` |
 | `--types` | *(empty)* | Comma-separated list of types to expose from hosted modules |
 | `--methods` | *(empty)* | Comma-separated list of methods to expose from hosted modules |
 | `--tcpServer` | `false` | Enable the TCP server |
@@ -63,17 +63,19 @@ Option names are case-insensitive (for example `--httpport` and `--httpPort` are
 | `--corsAllowedOrigins` | *(empty)* | Comma-separated CORS origin allowlist (for example `http://localhost:3000,https://app.example.com` or `*`) |
 | `--corsConfig` | *(empty)* | Path to a CORS config file (`key=value` format) |
 | `--doNotExtractBinaries` | `false` | Do not extract bundled binaries; you must provide them yourself |
+| `--doNotExtractGMA` | `false` | Do not extract the bundled Graftcode Module Analyzer; you must provide the `GMA` directory yourself |
+| `--doNotExtractGVFE` | `false` | Do not extract the bundled Graftcode Vision frontend; you must provide the `GVFE` directory yourself |
 | `--graftOnly` | `false` | Generate and publish the Unified Graft Model without starting any servers |
 
 ### Versioning
 
 Versioning behavior is resolved after CLI and environment-variable parsing:
 
-- Without a `--projectKey` (or `GC_PROJECT_KEY`) **and** without GSMU, the gateway runs in standalone mode and **disables versioning** by default. Standalone is not used whenever GSMU is called (`--GSMU` or `--GV`, which enables GSMU).
+- Without a `--projectKey` (or `GC_PROJECT_KEY`), the gateway runs in standalone mode and **disables versioning** by default.
 - `--keepVersioning` (default `true`) re-enables versioning even without a project key.
 - `--noVersioning` explicitly disables versioning regardless of project key.
 
-The WebSocket server always starts. The HTTP server (Graftcode Vision) starts only when `--GV` is enabled (default).
+The WebSocket server always starts. Graftcode Vision, its HTTP server, and the informational GET routes are served only when `--GV` is enabled (default). When Vision is off, `GET /`, `GET /status`, and `GET /GV` still return `200` with body `OK`. `/mcp` and `/run` stay available.
 
 ### Runtimes (typical setups)
 
@@ -153,7 +155,7 @@ Clients that only support stdio MCP servers can bridge over HTTP with `mcp-remot
 
 Point MCP clients at `http://localhost:8989/mcp`. Standard MCP clients use HTTP/1.1, which the gateway accepts on the same port alongside HTTP/2 for graft traffic.
 
-The HTTP/2 port also exposes the same informational GET routes as the WebSocket port (`/status`, `/gatewayname`, `/http2port`, `/mcpport`, `/ugm`, `/libraries`, `/discover`, `/idl`, `/mcpmodel`, package install commands, etc.).
+The HTTP/2 port also exposes the same informational GET routes as the WebSocket port when `--GV` is enabled (`/gatewayname`, `/http2port`, `/mcpport`, `/ugm`, `/libraries`, `/discover`, `/idl`, `/mcpmodel`, package install commands, etc.). `GET /`, `GET /status`, and `GET /GV` return `200` with body `OK` even when Vision is off.
 
 ### CORS config file (`--corsConfig`)
 
@@ -191,6 +193,9 @@ Environment variables are read after CLI parsing and override matching CLI value
 | Variable | Purpose |
 |----------|---------|
 | `GG_DEBUG` | Set to `1` or `TRUE` to log incoming and outgoing byte traffic to the console |
+| `GG_GV` | Overrides `--GV`. `1` or `true` hosts Graftcode Vision and informational routes; `0` or `false` hides them |
+| `GG_GMA` | Overrides `--GMA`. `0` or `false` skips module analysis and forces GSMU off |
+| `GG_GSMU` | Overrides `--GSMU`. `0` or `false` skips uploading the model. Has no effect while GMA is off |
 | `GSMU_ENDPOINT` | When set, overrides the gateway endpoint from `--endpoint` (default CLI value is `https://grft.dev`) |
 | `GC_PROJECT_KEY` | Project key in `env:token` form (for example `dev:eyJ...`) or as a bare JWT; when set, overrides `--projectKey` |
 | `UWS_HTTP_MAX_HEADERS_SIZE` | Max HTTP request header size in bytes for the WebSocket/HTTP listener. Default is `16384` |
