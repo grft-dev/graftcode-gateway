@@ -7,10 +7,9 @@ LABEL org.opencontainers.image.url="https://hub.docker.com/r/graftcode/eclipse-t
 LABEL org.opencontainers.image.vendor="grft-dev"
 LABEL org.opencontainers.image.licenses="MIT"
 
-ARG GG_VERSION=1.4.10
 RUN apt-get update && apt-get install -y --no-install-recommends wget ca-certificates \
     && wget -O /tmp/gg.deb \
-      "https://github.com/grft-dev/graftcode-gateway/releases/download/v${GG_VERSION}/gg_linux_amd64.deb" \
+      https://github.com/grft-dev/graftcode-gateway/releases/latest/download/gg_linux_amd64.deb \
     && dpkg -i --force-overwrite /tmp/gg.deb \
     && rm /tmp/gg.deb \
     && rm -rf /var/lib/apt/lists/*
