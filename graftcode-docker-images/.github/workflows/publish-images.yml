@@ -1,0 +1,67 @@
+name: Publish Docker images
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dockerfile: src/java/17-jdk/Dockerfile
+            tags: graftcode/eclipse-temurin:17-jdk
+          - dockerfile: src/java/21-jdk/Dockerfile
+            tags: |
+              graftcode/eclipse-temurin:21-jdk
+              graftcode/eclipse-temurin:latest
+          - dockerfile: src/netcore/sdk/9.0/Dockerfile
+            tags: graftcode/netcore:9.0
+          - dockerfile: src/netcore/sdk/10.0/Dockerfile
+            tags: |
+              graftcode/netcore:10.0
+              graftcode/netcore:latest
+          - dockerfile: src/nodejs/Dockerfile
+            tags: |
+              graftcode/node:22
+              graftcode/node:latest
+          - dockerfile: src/python/Dockerfile
+            tags: |
+              graftcode/python:3.12
+              graftcode/python:latest
+          - dockerfile: src/php/Dockerfile
+            tags: |
+              graftcode/php:8.4
+              graftcode/php:latest
+          - dockerfile: src/ruby/Dockerfile
+            tags: |
+              graftcode/ruby:3.3
+              graftcode/ruby:latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ matrix.tags }}
