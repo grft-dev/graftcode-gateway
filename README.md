@@ -49,6 +49,7 @@ Option names are case-insensitive (for example `--httpport` and `--httpPort` are
 | `--GV` | `true` | Host Graftcode Vision and the informational HTTP routes (`/ugm`, `/idl`, `/discover`, package commands, and the rest). Pass `--GV=0` to hide Vision and those routes. `/`, `/status`, and `/GV` still return `200` with body `OK`. WebSocket `/ws`, TCP, HTTP/2 `POST /h2`, `/mcp`, and `/run` stay available. Stays on when GMA or GSMU is off |
 | `--GMA` | `true` | Run the Graftcode Module Analyzer to build the Unified Graft Model. Pass `--GMA=0` to skip analysis. Turning GMA off also turns GSMU off. Model routes then return `200` with `GMA is disabled. Not enough data to display the model.` |
 | `--GSMU` | `true` | Upload the Unified Graft Model to GSMU and supply installation-command data. Pass `--GSMU=0` to skip the upload. Forced off when GMA is off. Installation-command routes then return `200` with `GSMU is disabled. Not enough data to build the installation command.` |
+| `--wsMaxInFlightPerConnection` | `8` | Maximum number of requests processed concurrently per WebSocket connection (1-1024). Further requests are queued in arrival order up to 1,024 frames or 16 MiB; exceeding either limit closes the connection. Responses retain request order |
 | `--types` | *(empty)* | Comma-separated list of types to expose from hosted modules |
 | `--methods` | *(empty)* | Comma-separated list of methods to expose from hosted modules |
 | `--tcpServer` | `false` | Enable the TCP server |
@@ -81,13 +82,13 @@ The WebSocket server always starts. Graftcode Vision, its HTTP server, and the i
 
 - **`auto`** — Let GG detect the runtime (default)
 - **`netcore`** — latest .NET (Core) runtime installed on machine. Supported versions: .NET Core 3.1, .NET 5 or newer
-- **`clr`** — .NET Framework runtime installed on the machine; 4.7.2 or newer
+- **`clr`** — .NET Framework runtime installed on the machine; 4.8 or newer
 - **`java` / `jvm`** — Java installed on the machine; `JAVA_HOME` should point at the JDK; Java 8 or newer
-- **`python`** — Python 3 installed on the machine; Python 3.6 or newer
+- **`python`** — Python 3.6 or newer installed on the machine. GG loads the Python shared library (`python3XX.dll`, `libpython3.XX.so`, `libpython3.XX.dylib`), see [Runtime library discovery](#runtime-library-discovery)
 - **`python27`** — Python 2.7 installed on the machine
-- **`ruby`** — Ruby 3 installed on the machine. Supported Ruby 3 or newer
-- **`nodejs`** — Node.js 22 installed on the machine. Supported Node.js 22 or newer
-- **`php`** — PHP 7.4 installed on the machine. Supported PHP 7.4 or newer
+- **`ruby`** — Ruby 3.0 or newer installed on the machine (up to Ruby 4.0). GG loads the Ruby shared library (`x64-ucrt-ruby340.dll`, `libruby.so`, `libruby.dylib`). With RubyInstaller keep `bin\ruby_builtin_dlls` next to the Ruby DLL
+- **`nodejs`** — built in. GG ships its own Node.js 22 library, nothing to install
+- **`php`** — Thread Safe PHP 8.5 built with the embed SAPI (PHP 8.4 on Windows ARM64). GG loads `php8ts.dll`, `libphp.so` or `libphp.dylib`; the `php` CLI alone and the NTS `php8.dll` are not enough
 
 ### Examples
 
@@ -199,6 +200,21 @@ Environment variables are read after CLI parsing and override matching CLI value
 | `GSMU_ENDPOINT` | When set, overrides the gateway endpoint from `--endpoint` (default CLI value is `https://grft.dev`) |
 | `GC_PROJECT_KEY` | Project key in `env:token` form (for example `dev:eyJ...`) or as a bare JWT; when set, overrides `--projectKey` |
 | `UWS_HTTP_MAX_HEADERS_SIZE` | Max HTTP request header size in bytes for the WebSocket/HTTP listener. Default is `16384` |
+
+### Runtime library discovery
+
+GG hosts every runtime in-process (in-memory channel). .NET uses the latest runtime installed on the system, Java uses `JAVA_HOME` and Node.js is built in. Python, Ruby and PHP need the runtime's shared library, not only the interpreter executable. These variables are read by the Hypertube runtime loader, not by the CLI, and do not override CLI options. The library is resolved in this order:
+
+1. `runtimePath` set for the runtime's channel in the Hypertube configuration
+2. The `HYPERTUBE_*_RUNTIME_PATH` variable below, with the full path to the library
+3. The library file name in the system library search path: `PATH` on Windows, `LD_LIBRARY_PATH`, the ldconfig cache and default directories on Linux, dyld search paths on macOS
+
+| Variable | Purpose |
+|----------|---------|
+| `HYPERTUBE_PYTHON_RUNTIME_PATH` | Full path to the Python shared library, for example `C:\Python313\python313.dll` or `/usr/lib/x86_64-linux-gnu/libpython3.13.so` |
+| `HYPERTUBE_PYTHON_VERSION` | Python version to load from the system library search path: `3.13` on Linux and macOS, `313` on Windows. Without it GG tries Python 3.14 down to 3.6 |
+| `HYPERTUBE_RUBY_RUNTIME_PATH` | Full path to the Ruby shared library, for example `C:\Ruby34-x64\bin\x64-ucrt-ruby340.dll` or `/usr/local/lib/libruby.so.3.4` |
+| `HYPERTUBE_PHP_RUNTIME_PATH` | Full path to the Thread Safe PHP embed library, for example `C:\php85\php8ts.dll` or `/opt/php/8.5/lib/libphp.so` |
 
 
 ## Plugin server config
