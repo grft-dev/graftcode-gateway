@@ -67,6 +67,7 @@ Option names are case-insensitive (for example `--httpport` and `--httpPort` are
 | `--doNotExtractGMA` | `false` | Do not extract the bundled Graftcode Module Analyzer; you must provide the `GMA` directory yourself |
 | `--doNotExtractGVFE` | `false` | Do not extract the bundled Graftcode Vision frontend; you must provide the `GVFE` directory yourself |
 | `--graftOnly` | `false` | Generate and publish the Unified Graft Model without starting any servers |
+| `--verbosity` | `warning` | Console verbosity: `debug`, `info`, or `warning`. `debug` prints debug and above, leaves GMA and Hypertube logs visible, and prints the summary table after the server lines. `info` prints info and above, leaves GMA and Hypertube logs visible, and prints the summary table after the server lines. `warning` shows the startup logo and a progress line, clears Hypertube lines once the runtime is up, clears GMA traces after analysis, then prints the installation commands and the summary table. `--graftOnly` uses the same logo and progress line, clears those lines too, and prints the IDL instead of the summary table. `GG_VERBOSITY` overrides this option when set |
 
 ### Versioning
 
@@ -193,10 +194,10 @@ Environment variables are read after CLI parsing and override matching CLI value
 
 | Variable | Purpose |
 |----------|---------|
-| `GG_DEBUG` | Set to `1` or `TRUE` to log incoming and outgoing byte traffic to the console |
 | `GG_GV` | Overrides `--GV`. `1` or `true` hosts Graftcode Vision and informational routes; `0` or `false` hides them |
 | `GG_GMA` | Overrides `--GMA`. `0` or `false` skips module analysis and forces GSMU off |
 | `GG_GSMU` | Overrides `--GSMU`. `0` or `false` skips uploading the model. Has no effect while GMA is off |
+| `GG_VERBOSITY` | Overrides `--verbosity`. `debug`, `info`, or `warning` |
 | `GSMU_ENDPOINT` | When set, overrides the gateway endpoint from `--endpoint` (default CLI value is `https://grft.dev`) |
 | `GC_PROJECT_KEY` | Project key in `env:token` form (for example `dev:eyJ...`) or as a bare JWT; when set, overrides `--projectKey` |
 | `UWS_HTTP_MAX_HEADERS_SIZE` | Max HTTP request header size in bytes for the WebSocket/HTTP listener. Default is `16384` |
